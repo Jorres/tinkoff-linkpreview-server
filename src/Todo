@@ -1,0 +1,19 @@
+1) Introduce logging
+2) Write tests
+3) Close resources
+4) Pack into docker
+5) Implement some parsing
+6) Change h2 to something else??
+7) Logs rotation
+8) Write Javadocs to everything in the project
+
+1) (easy) Write Javadocs to everything in the project
+2) (easy) Implement logs rotation (now server logs are written into files with sequential numbers)
+3) (medium) Change h2-in-memory database to something else, not in-memory (Postgres?)
+4) (easy) Pack server-side app (and maybe even client-side) into docker images
+5) (medium) Write comprehensive unit testing
+6) (hard) Write some integrational tests involving both client and server
+7) (medium) Make page parsing logic more complex, introduce more kinds of processed information
+8) (medium) Put both applications into the cloud (like Heroku or Azure or Google Cloud)
+9) (hard) Setup (Github? Gitlab?) CI\CD process and automate deployment
+
