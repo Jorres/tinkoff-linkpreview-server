@@ -1,0 +1,21 @@
+version: "3"
+services:
+    linkpreview-server:
+        image: jorres/tinkoff-linkpreview:latest
+        ports: 
+            - 8090:8090
+        depends_on:
+            - mysqldb
+    mysqldb:
+        image: mysql
+        environment:
+            - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+            - MYSQL_USER=${MYSQL_USER}
+            - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+            - MYSQL_DATABASE=${MYSQL_DATABASE}
+        volumes:
+            - database_data_mysql:/var/lib/mysql
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+volumes:
+    database_data_mysql:
+        driver: local
