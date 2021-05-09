@@ -16,17 +16,19 @@ import org.slf4j.event.Level
 fun Application.queryModule() {
     val queryService: QueryService by closestDI().instance()
 
-    /*
-     * A temporary crutch to enable local development to circumvent CORS.
-     * TODO find out how to setup it properly
-     */
     install(CORS) {
         method(HttpMethod.Options)
-        header(HttpHeaders.XForwardedProto)
-        anyHost()
+        method(HttpMethod.Put)
+        method(HttpMethod.Delete)
+        method(HttpMethod.Patch)
+        header(HttpHeaders.Authorization)
         header(HttpHeaders.AccessControlAllowOrigin)
-        allowCredentials = true
+        header(HttpHeaders.XForwardedProto)
         allowNonSimpleContentTypes = true
+        allowCredentials = true
+        allowSameOrigin = true
+        host("*", listOf("http", "https"))
+        anyHost()
     }
 
     install(CallLogging) {
@@ -43,7 +45,6 @@ fun Application.queryModule() {
                     val requestParams = call.receive<RequestParams>()
                     val queryResult = queryService.process(url, requestParams)
                     call.respond(queryResult)
-                    println(queryResult)
                 } else {
                     call.respond(HttpStatusCode.BadRequest)
                 }

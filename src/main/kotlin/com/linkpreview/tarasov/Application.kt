@@ -1,6 +1,5 @@
 package com.linkpreview.tarasov
 
-import com.linkpreview.tarasov.processor.QueryService
 import com.linkpreview.tarasov.processor.queryComponents
 import com.linkpreview.tarasov.processor.queryModule
 import com.typesafe.config.ConfigFactory
@@ -45,6 +44,7 @@ fun DI.Builder.mainComponents(config: AppConfig) {
         config
     }
     val dbConfig = config.database
+    println(dbConfig)
     bind<Database>() with singleton {
         Database.connect(
             url = dbConfig.url,

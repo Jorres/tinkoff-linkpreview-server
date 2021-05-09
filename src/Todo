@@ -17,3 +17,9 @@
 8) (medium) Put both applications into the cloud (like Heroku or Azure or Google Cloud)
 9) (hard) Setup (Github? Gitlab?) CI\CD process and automate deployment
 
+
+Plan:
+2) deploy mysql + everything on YaCloud and verify there (+)
+3) write some functionality, keep in mind multithreading on corutines (+)
+4) add spinner to web-app
+5) deploy web-app as well

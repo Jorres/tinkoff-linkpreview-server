@@ -49,6 +49,8 @@ dependencies {
     implementation("mysql:mysql-connector-java:8.0.24")
     implementation("com.h2database:h2:1.4.200")
 
+    implementation("it.skrape:skrapeit:1.1.1")
+
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
 }
 
