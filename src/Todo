@@ -2,8 +2,6 @@
 2) Write tests
 3) Close resources
 4) Pack into docker
-5) Implement some parsing
-6) Change h2 to something else??
 7) Logs rotation
 8) Write Javadocs to everything in the project
 

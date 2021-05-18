@@ -7,6 +7,9 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
+/**
+ * Database-independent DAO for extracting and caching queries.
+ */
 class QueryDao(private val database: Database) {
     fun tryGetCachedQuery(queryUrl: String): Optional<String> {
         return transaction(database) {

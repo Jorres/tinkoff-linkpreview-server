@@ -1,33 +1,44 @@
 package com.linkpreview.tarasov.processor
 
-import it.skrape.core.document
-import it.skrape.fetcher.AsyncFetcher
-import it.skrape.fetcher.extractIt
-import it.skrape.fetcher.skrape
-import it.skrape.selects.eachImage
-import it.skrape.selects.eachSrc
-import it.skrape.selects.eachText
-import it.skrape.selects.html5.img
-import it.skrape.selects.html5.p
-import it.skrape.selects.html5.video
+import com.linkpreview.tarasov.CachingConfig
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import org.jsoup.Jsoup
 
-class QueryService(private val queryDao: QueryDao) {
+/**
+ * The business logic of an application, forming the
+ * useful part of the `/query` response.
+ */
+class QueryService(private val queryDao: QueryDao, private val cachingConfig: CachingConfig) {
+    fun getUnresolvedMessage(): JsonObject {
+        return buildJsonObject {
+            put("Error", Json.encodeToJsonElement(
+            "Sorry, we couldn't connect with this host. " +
+                 "Make sure you have a correct address in your input."
+            ))
+        }
+    }
+
     suspend fun process(url: String, requestParams: RequestParams): JsonObject {
-        val maybeCached = queryDao.tryGetCachedQuery(url)
-        val scrapedPage = if (maybeCached.isPresent) {
-            println("query cached, returning cached value...")
-            Json.decodeFromString(maybeCached.get())
+        val scrapedPage = if (cachingConfig.enabled) {
+            val maybeCached = queryDao.tryGetCachedQuery(url)
+            if (maybeCached.isPresent) {
+                Json.decodeFromString(maybeCached.get())
+            } else {
+                val tmpResult = scrapePage(appendHTTPS(url))
+                queryDao.cacheQuery(url, Json.encodeToString(tmpResult))
+                tmpResult
+            }
         } else {
-            println("query not cached, performing request...")
-            val tmpResult = scrapePage("https://$url")
-            queryDao.cacheQuery(url, Json.encodeToString(tmpResult))
-            tmpResult
+            scrapePage(appendHTTPS(url))
         }
 
         return buildJsonObject {
@@ -35,10 +46,12 @@ class QueryService(private val queryDao: QueryDao) {
                 Json.encodeToJsonElement(scrapedPage.httpStatusCode))
             put("httpPageSize",
                 Json.encodeToJsonElement(scrapedPage.htmlPageSize))
-            if (requestParams.accessibility) {
-                put("accessibilityData",
-                    Json.encodeToJsonElement(scrapedPage.accessibilityData))
-            }
+            put("title",
+                Json.encodeToJsonElement(scrapedPage.title))
+            put("description",
+                Json.encodeToJsonElement(scrapedPage.description))
+            put("locale",
+                Json.encodeToJsonElement(scrapedPage.locale))
             if (requestParams.video) {
                 put("videoData",
                     Json.encodeToJsonElement(scrapedPage.videoData))
@@ -55,46 +68,43 @@ class QueryService(private val queryDao: QueryDao) {
     }
 
     private suspend fun scrapePage(pageUrl: String): PageData {
-        return skrape(AsyncFetcher) {
-            request {
-                url = pageUrl
-            }
-            extractIt {
-                it.httpStatusCode = status { code }
-                it.htmlPageSize = responseBody.length
-                it.accessibilityData = AccessibilityData(3.14)
-                it.imageData = ImageData(
-                    catchZeroSize {
-                        document.img {
-                            findAll{ eachImage }.size
-                        }
-                    }
-                )
-                it.textData = TextData(
-                    catchZeroSize {
-                        document.p {
-                            findAll { eachText }.fold(0) { a, s ->
-                                a + s.length
-                            }
-                        }
-                    }
-                )
-                it.videoData = VideoData(
-                    catchZeroSize {
-                        document.video {
-                            findAll { eachSrc }.size
-                        }
-                    }
-                )
-            }
-        }
+        val client = HttpClient(CIO)
+        val response: HttpResponse = client.get(pageUrl)
+        val pageData = response.readText()
+        client.close()
+
+        val doc = Jsoup.parse(pageData)
+        val paragraphs = doc.select("p")
+        val links = doc.select("a")
+        val videos = doc.select("video")
+
+        return PageData(
+            httpStatusCode = response.status.value,
+            htmlPageSize = pageData.length,
+            pageText = pageData,
+            title = doc.title(),
+            locale = doc.select("html").attr("lang"),
+            description = doc.select("meta")
+                .filter{elem -> elem.attr("name") == "description"}
+                .map { elem -> elem.attr("content") }
+                .firstOrNull(),
+            imageData = ImageData(
+                doc.select("img").size
+            ),
+            videoData = VideoData(
+                videos.size,
+                videos.map { elem -> elem.attr("src")}
+            ),
+            textData = TextData(
+               paragraphs.size + links.size,
+                (paragraphs + links).fold(0) {sum, elem ->
+                    sum + elem.ownText().length
+                }
+            )
+        )
     }
 
-    private fun catchZeroSize(action: () -> Int): Int {
-        return try {
-            action()
-        } catch (e: Exception) {
-            0
-        }
+    private fun appendHTTPS(url: String): String {
+        return "https://$url"
     }
 }

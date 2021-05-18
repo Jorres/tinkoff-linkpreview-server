@@ -13,7 +13,7 @@ import org.kodein.di.bind
 import org.kodein.di.ktor.di
 import org.kodein.di.singleton
 
-fun main(args: Array<String>) {
+fun main() {
     val config = ConfigFactory.load().extract<AppConfig>()
     val dbConfig = config.database
 
@@ -26,7 +26,9 @@ fun main(args: Array<String>) {
         queryModule()
     }
 
-    migrate(dbConfig)
+    if (config.database.inMemory) {
+        migrate(dbConfig)
+    }
 
     engine.start(wait = true)
 }
@@ -44,12 +46,15 @@ fun DI.Builder.mainComponents(config: AppConfig) {
         config
     }
     val dbConfig = config.database
-    println(dbConfig)
     bind<Database>() with singleton {
         Database.connect(
             url = dbConfig.url,
             user = dbConfig.user,
             password = dbConfig.password
         )
+    }
+
+    bind<CachingConfig>() with singleton {
+        config.caching
     }
 }
